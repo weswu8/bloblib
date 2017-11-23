@@ -61,9 +61,9 @@ It is highly recommended that you should config it as a windows services.
 * For the page blob, currently, should be, but it is not well tested yet. it may casue file interruption. 
 
 ## Supported platforms
--Linux
--MacOS
--windows
+* Linux
+* MacOS
+* windows
 
 ## License
 	Copyright (C) 2017 Wesley Wu jie1975.wu@gmail.com
