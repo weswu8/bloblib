@@ -88,7 +88,7 @@ public class ThreadPuddle {
 	public static int defaultNumberOfThreads() {
 		int availProcessors = Runtime.getRuntime().availableProcessors();
 		if (availProcessors >= 8) { return  16;}
-		if (availProcessors <= 2) { return  6; }
+		if (availProcessors <= 2) { return  8; }
 		if (availProcessors > 2) { return availProcessors * 2;}
 		return availProcessors + 1;
 		//return Math.min(Runtime.getRuntime().availableProcessors() * 2, 5);

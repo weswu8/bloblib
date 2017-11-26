@@ -3,11 +3,8 @@ package com.wesley.bloblib;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-
-import javax.xml.bind.DatatypeConverter;
 
 import org.pmw.tinylog.Logger;
 
@@ -17,6 +14,7 @@ import com.microsoft.azure.storage.blob.BlockEntry;
 import com.microsoft.azure.storage.blob.CloudAppendBlob;
 import com.microsoft.azure.storage.blob.CloudBlob;
 import com.microsoft.azure.storage.blob.CloudBlockBlob;
+import com.microsoft.azure.storage.blob.CloudPageBlob;
 import com.wesley.bloblib.utils.BfsUtility;
 
 
@@ -35,7 +33,7 @@ public class BlobBufferedOus extends OutputStream {
 	long totalDataUploaded = 0;
 	long localFileSize = 0;
 	/* the upload chunk size, the should be smaller than the buffer size */
-	int chunkSizeOfBB = Constants.BLOB_BUFFERED_OUTS_BLOCKBLOB_CHUNK_SIZE;
+	int chunkSizeOfBB = Constants.BLOB_BUFFERED_OUTS_BLOCKBLOB_CHUNK_SIZE * 2;
 	int chunkNumber = 0;
 	int chunkSizeOfAB = Constants.BLOB_BUFFERED_OUTS_APPENDBLOB_CHUNK_SIZE;
 	/* the available bytes in central buffer */
@@ -196,32 +194,25 @@ public class BlobBufferedOus extends OutputStream {
 		try {
 			/* renew the lease firstly, otherwise the lease may be expired, this will cause error */
 			blob.renewLease(accCondtion);
-			
-			ByteArrayInputStream bInput = new ByteArrayInputStream(rawData, offset, length);
-			/* update the chunk counter */
-			chunkNumber ++;
-			if (BfsBlobType.BLOCKBLOB.equals(this.blobType)){
-				/* save chunk id in array (must be base64) */
-				String chunkId = DatatypeConverter.printBase64Binary(String.format("BlockId%07d", chunkNumber).getBytes(StandardCharsets.UTF_8));
-                //String chunkId = Base64.getEncoder().encodeToString(String.format("BlockId%07d", chunkNumber).getBytes(StandardCharsets.UTF_8));
-                BlockEntry chunk = new BlockEntry(chunkId);
-                blockList.add(chunk);               
-				((CloudBlockBlob) blob).uploadBlock(chunkId, bInput, (long)length, accCondtion, null, null);
-			} else if (BfsBlobType.APPENDBLOB.equals(this.blobType)){				
-				((CloudAppendBlob) blob).appendBlock(bInput, (long)length, accCondtion, null, null);
+     		if (BfsBlobType.BLOCKBLOB.equals(this.blobType)){
+				ParallelUploader parallelUploader = new ParallelUploader(blob, offset, length, chunkNumber);
+				parallelUploader.uploadBlobWithParallelThreads(rawData, blockList, accCondtion, leaseID);
+				/* update the chunk counter */
+				chunkNumber = parallelUploader.chunkNumber;
+				parallelUploader.destroy();
+			} 
+     		else
+			{
+				ByteArrayInputStream bInput = new ByteArrayInputStream(rawData, offset, length);
+				if (BfsBlobType.APPENDBLOB.equals(this.blobType)){
+					((CloudAppendBlob) blob).appendBlock(bInput, (long)length, accCondtion, null, null);
+				}else if (BfsBlobType.PAGEBLOB.equals(this.blobType)){
+					((CloudPageBlob) blob).upload(bInput, length, accCondtion, null, null);
+				}
+				bInput.close();
 			}
-			bInput.close();
 			dataUploadedThisChunk = length;
-			/* save the block ID list , secure the data */ 
-			if (BfsBlobType.BLOCKBLOB.equals(this.blobType)){
-				/* set leaseID in the meta data */
-				BlobReqParams cbParams = new BlobReqParams();
-				cbParams.setBlobInstance(blob);
-				cbParams.setLeaseID(leaseID);
-				BlobService.setBlobMetadata(cbParams,Constants.BLOB_META_DATA_COMMITED_BLOBKS_KEY, BfsUtility.blockIds(blockList));
-			}
-			
-		} catch (StorageException | IOException ex) {
+	} catch (Exception ex) {
 			String errMessage = "Unexpected exception occurred when uploading to the blob : " 
 						+ this.fullBlobPath + ", No. of chunk: " + chunkNumber + "." + ex.getMessage(); 
 			BfsUtility.throwBlobfsException(ex, errMessage);
@@ -237,6 +228,7 @@ public class BlobBufferedOus extends OutputStream {
 		} else if (BfsBlobType.APPENDBLOB.equals(this.blobType)){
 			if (centralBufOffset > chunkSizeOfAB){ return result = true;}
 		}
+		/* page blob */
 		return result;
 	}
 	

@@ -453,7 +453,7 @@ public final class BlobService {
 					{
 						try 
 						{
-							int retryCount = 1;
+							 int retryCount = 1;
 							 String sourceBlobName = bfsBlobModel.getBlobName();
 							 BfsBlobType bfsBlobType = bfsBlobModel.getBfsBlobType();
 							 BlobReqParams delReq = new BlobReqParams();

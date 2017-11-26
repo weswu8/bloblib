@@ -24,7 +24,7 @@ public class BlobBufferedIns extends InputStream {
 	long numOfBlobBtsLeft = 0;
 	/* the type of the blob */
 	BfsBlobType blobType;
-	int dwLocalBufferSize = Constants.BLOB_BUFFERED_INS_DOWNLOAD_SIZE;
+	int dwLocalBufferSize = 0;
 	String fullBlobPath;
 	/* count used by readline function */
 	long readOffset = 0;
@@ -38,7 +38,9 @@ public class BlobBufferedIns extends InputStream {
 		this.blobType = reqParams.getBfsBlobType();
 		this.numOfBlobBtsLeft = this.blobSize;
 		this.fullBlobPath = reqParams.getBlobFullPath();
+		this.dwLocalBufferSize = (int) Math.min(Constants.BLOB_BUFFERED_INS_DOWNLOAD_SIZE * 2, this.blobSize);
 	}
+	
 	public CloudBlob getBlob() {
 		return blob;
 	}
@@ -46,7 +48,7 @@ public class BlobBufferedIns extends InputStream {
 	public long getBlobSize() {
 		return blobSize;
 	}
-	
+
 	@Override
 	public synchronized int read(byte[] outputBuffer, int offset, int len) throws IOException {
 		int numOfBytesReaded = 0;
@@ -214,8 +216,11 @@ public class BlobBufferedIns extends InputStream {
 		len = Math.min(blobSize - offset, len) ;
         dwLocalBuffer = new byte[(int) len];
 		try {
-			bytesDownloaded = blob.downloadRangeToByteArray(offset, len, dwLocalBuffer, 0);
-		} catch (StorageException ex) {
+			ParallelDownloader parallelDownloader = new ParallelDownloader(blob, offset, len);
+			dwLocalBuffer = parallelDownloader.downloadBlobWithParallelThreads();
+			bytesDownloaded = dwLocalBuffer.length;
+			parallelDownloader.destroy();
+		} catch (Exception ex) {
 			String errMessage = "Unexpected exception occurred when downloading from the blob : " 
 						+ this.fullBlobPath + ". " + ex.getMessage(); 
 			BfsUtility.throwBlobfsException(ex, errMessage);

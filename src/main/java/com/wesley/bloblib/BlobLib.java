@@ -1,5 +1,9 @@
 package com.wesley.bloblib;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -7,6 +11,7 @@ import org.pmw.tinylog.Logger;
 
 import com.eclipsesource.json.Json;
 import com.eclipsesource.json.JsonObject;
+import com.microsoft.azure.storage.blob.CloudBlob;
 import com.microsoft.azure.storage.file.ShareListingDetails;
 
 public class BlobLib {
@@ -41,12 +46,25 @@ public class BlobLib {
 //            insParams.setBfsBlobType(BfsBlobType.BLOCKBLOB);
 //            insParams.setBlob("blobfs-2017-05-26.0.log");
 //            BlobBufferedIns bbIns = new BlobBufferedIns(insParams);
-//            BlobReqParams ousParams = new BlobReqParams();
+//			BlobReqParams ousParams = new BlobReqParams();
 //            ousParams.setContainer("music2017");
-//            ousParams.setBlob("music2.log");
+//            ousParams.setBlob("blobfs-2017-11-21.log");
 //            /* get the blob type */
 //            ousParams.setBfsBlobType(BfsBlobType.BLOCKBLOB);
-//            BlobBufferedOus bbOus = new BlobBufferedOus(ousParams);
+//            BlobService.createBlob(ousParams);
+//            BlobBufferedOus bbOus = new BlobBufferedOus(ousParams);	
+//			FileReader fileRead = new FileReader("C:\\Downloads\\Mydevs\\blobfs-win\\blobfs-win\\bin\\Debug\\blobfs-2017-11-19.log");
+//	        BufferedReader bufferedReader = new BufferedReader(fileRead);
+//	        String lineData;
+//            while((lineData= bufferedReader.readLine()) != null){
+//            	//bbOus.write(lineData.getBytes(), 0, lineData.getBytes().length);
+//            	bbOus.writeLine(lineData);
+//            	//for (byte b: lineData.getBytes()){
+//            	//	bbOus.write(b);
+//            	//	bbOus.flush();
+//            	//}
+//            }
+//            bbOus.close();
 //            OpenedFileModel ofe = new OpenedFileModel(bbIns, bbOus);
 //            ofe.setLeaseID(bbOus.getLeaseID());
 //            ofe.setContainer("music2017");
@@ -62,6 +80,20 @@ public class BlobLib {
 //                Thread.sleep(100);
 //            }
 //            bbOus.close();
+//			FileWriter fw = new FileWriter("G:\\share\\append.log", true);
+//			fw.write("this is a append file");
+//			fw.close();
+//			BlobReqParams insParams = new BlobReqParams();
+//            insParams.setContainer("orders");
+//            insParams.setBfsBlobType(BfsBlobType.BLOCKBLOB);
+//            insParams.setBlob("blobfs-2017-11-19.log");
+//			CloudBlob blob = BlobService.getBlobReference(insParams);
+//			byte[] dwLocalBuffer = null;
+//			ParallelDownloader parallelDownloader = new ParallelDownloader(blob, 10 * 1024, 10 * 1024 );
+//			dwLocalBuffer = parallelDownloader.downloadBlobWithParallelThreads();
+//			String str = new String(dwLocalBuffer, StandardCharsets.UTF_8);
+//			System.out.println(str);
+					
 			/* get the blobs within the virtual directory with lazy mode */
 //            BlobReqParams getBlobsReq = new BlobReqParams();
 //            getBlobsReq.setContainer("music2017");
@@ -100,7 +132,7 @@ public class BlobLib {
 //            BfsBlobType bfsBlobType = pathPropeties.getBfsBlobType();
 //            BfsPath bfsPath = new BfsPath("newtest");
 //            PathProperties pathProperties = bfsPath.getBfsPathProperties();
-//			  BlobReqParams delDirParams = new BlobReqParams();
+			  BlobReqParams delDirParams = new BlobReqParams();
 //	          delDirParams.setContainer("orders");
 //	          delDirParams.setBlob("wx.txt");
 //	          BlobService.deleteBlob(delDirParams);
@@ -120,11 +152,12 @@ public class BlobLib {
 //               System.out.println("DELETE SUCCESSED!");
 //            }
 			System.out.println("You called the main method!");
-			while(true)
-			{
-				System.out.println("main thread!");
-				Thread.sleep(100);
-			}
+			System.out.println(Configuration.BFS_CACHE_TTL_MS);
+//			while(true)
+//			{
+//				System.out.println("main thread!");
+//				Thread.sleep(100);
+//			}
 		
 		} catch (Exception ex) {
 			// TODO Auto-generated catch block

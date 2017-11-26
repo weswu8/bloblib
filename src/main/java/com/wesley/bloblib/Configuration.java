@@ -77,7 +77,7 @@ public final class Configuration {
 	    BFS_CLUSTER_ENABLED = Boolean.parseBoolean(iniReader.getProperty("cluster_enabled"));
 	    DEFAULT_BFS_LOG_LEVEL = iniReader.getProperty("log_level");
 	    BFS_CACHE_ENABLED = Boolean.parseBoolean(iniReader.getProperty("cache_enabled"));
-	    BFS_CACHE_TTL_MS = Integer.parseInt(iniReader.getProperty("cache_TTL")) * 1000;
+	    BFS_CACHE_TTL_MS = Integer.parseInt(iniReader.getProperty("cache_TTL"))*1000;
 	    QUEUE_NAME = iniReader.getProperty("queue_name");
 	    AUTO_CHANGE_BLOCK_BLOB_TO_APPEND_BLOB = ("true".equals(iniReader.getProperty("auto_change_block_blob_to_append_blob").toLowerCase())) ? true : false;
 	}
