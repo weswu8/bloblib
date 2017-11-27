@@ -16,27 +16,17 @@ import com.wesley.bloblib.threads.ThreadPuddleFactory;
  */
 public class ParallelDownloader {
 	
-	/* the blob reference */
-	private CloudBlob blob;
+	/* instance of the object */
+	private static ParallelDownloader instance = null;
 	/* the number of threads */
 	private int defaultNumOfThreads = 8;
 	/* the minimum chunk size */
 	private int minChunkSize = 512 * 1024; // 512K
 	/* the downloader threads pool */
-	private ThreadPuddle downloaderThreadsPool;
+	private static ThreadPuddle downloaderThreadsPool;
 	/* the factory of thread puddle class */
-	private ThreadPuddleFactory threadPuddleFactory;
-	/* final count of chunks */
-	private int numOfChunks;
-	/* completed task's ID so far */
-	private int completedTaskID = -1;
-	/* the start offset of the blob to be downloaded from */
-	private int blobOffset;
-	/* the length of bytes needed to be downloaded, 
-	 * the length should be within a pre-defined range */
-	private long length;
-	/* the tasks list */
-	private List<DownloadTask> downloadTasksList = new ArrayList<DownloadTask>();
+	private static ThreadPuddleFactory threadPuddleFactory;
+	
 	
 	/**
 	 * the task class of read/write operations
@@ -54,6 +44,27 @@ public class ParallelDownloader {
 		}
 	}
 	
+	/**
+	 * constructor
+	 */
+	private ParallelDownloader(){
+		initTheDownLoaderThreadsPool(this.defaultNumOfThreads);
+	}
+	
+	/**
+	 * get the singleton  instance
+	 * @return
+	 */
+	public synchronized static ParallelDownloader getInstance () {
+	    if(instance == null){
+            synchronized (ParallelDownloader.class) {
+                if(instance == null){
+                    instance = new ParallelDownloader();
+               }
+            }
+        }
+	    return instance;
+	}
 	
 	/**
 	 * initialize the threads pool
@@ -61,32 +72,27 @@ public class ParallelDownloader {
 	private final void initTheDownLoaderThreadsPool(int numOfthreads){
 		threadPuddleFactory = new ThreadPuddleFactory();
 		threadPuddleFactory.setThreads(numOfthreads);
-		threadPuddleFactory.setTaskLimit(numOfthreads);
 		threadPuddleFactory.setFifo(true);
 		downloaderThreadsPool = threadPuddleFactory.build();
 	}
 	
-	public ParallelDownloader(CloudBlob blob, int blobOffset, long length){
-		this.blob = blob;
-		this.blobOffset = blobOffset;
-		this.length = length;
-		getFinalNumOfChunks();
-		initTheDownLoaderThreadsPool(numOfChunks);
-	}
 	
-	private void getFinalNumOfChunks(){
+	private int getFinalNumOfChunks(long length){
 		int tmpBlockCount = (int)((float)length / (float)minChunkSize) + 1;
 		/* the final number of the chunks */
-		numOfChunks = Math.min(defaultNumOfThreads, tmpBlockCount);
-		return;
+		int numOfChunks = Math.min(defaultNumOfThreads, tmpBlockCount);
+		return numOfChunks;
 	}
 	
 	/**
 	 * generate the parallel tasks
 	 */
-	private final void splitJobIntoTheParallelTasks(){
+	private final List<DownloadTask> splitJobIntoTheParallelTasks(int blobOffset, long length){
+		List<DownloadTask> downloadTasksList = new ArrayList<DownloadTask>();
 		int taskSequenceID = 0;
-		int tmpOffset = this.blobOffset;
+		int tmpOffset = blobOffset;
+		/* get the number of chunks */
+		int numOfChunks = getFinalNumOfChunks(length);
 		/* the final size of the chunk */
 		long numBtsInEachChunk = (long)(float)(length/numOfChunks);
 		long bytesLeft = length;
@@ -109,15 +115,19 @@ public class ParallelDownloader {
             /* increment/decrement counters */         
             bytesLeft -= bytesToRead;
 		}
-		return;
+		return downloadTasksList;
 	}
 	
-	public final byte[] downloadBlobWithParallelThreads() throws Exception{
+	public final byte[] downloadBlobWithParallelThreads(final CloudBlob blob, final int blobOffset, final long length) 
+			throws Exception{
 		final byte[] dlJobCentralBuffer = new byte[(int)length];
+		/* completed task's ID so far */
+		final int completedTaskID[] = new int[1];
+		completedTaskID[0] = -1;
 		final int failedTasks[] = new int[1];
 		final int totalBtsDownloaded[] = new int[1];
-		/* get the download tasks */
-		splitJobIntoTheParallelTasks();
+		/* generate the download tasks */
+		List<DownloadTask> downloadTasksList = splitJobIntoTheParallelTasks(blobOffset,length);
 		/* no tasks, return immediately */
 		if (downloadTasksList.size() == 0){return dlJobCentralBuffer;}
 		/* start the parallel reading */
@@ -137,7 +147,7 @@ public class ParallelDownloader {
 							/* check the downloaded result, break the loop if success*/
 							if (bytesDownloaded == downloadTask.length) {
 								/* wait for the pre-task to be completed */
-								while(completedTaskID != downloadTask.taskID -1){
+								while(completedTaskID[0] != downloadTask.taskID -1){
 									Thread.sleep((Constants.DEFAULT_BFC_THREAD_SLEEP_MILLS/5));										
 								}
 								/* get the offset in the central buffer */
@@ -148,7 +158,7 @@ public class ParallelDownloader {
 									/* update the total bytes downloaded */
 									totalBtsDownloaded[0] += bytesDownloaded;
 									/* update the offset of the completed task */
-									completedTaskID = downloadTask.taskID;
+									completedTaskID[0] = downloadTask.taskID;
 								}
 
 
@@ -175,11 +185,11 @@ public class ParallelDownloader {
 		while(true){
 			/* if there are any error, we should abandon this read operation */
 			if (failedTasks[0] > 0){
-				downloaderThreadsPool.die();
+				//downloaderThreadsPool.die();
 				throw new BfsException("read Failed:" + blob.getName());
 			}
 			/* completedTaskID start form 0 */
-			if (downloadTasksList.size() == completedTaskID + 1 && totalBtsDownloaded[0] == length){
+			if (downloadTasksList.size() == completedTaskID[0] + 1 && totalBtsDownloaded[0] == length){
 				break;
 			}
 			Thread.sleep((Constants.DEFAULT_BFC_THREAD_SLEEP_MILLS/5));

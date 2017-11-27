@@ -26,31 +26,16 @@ import com.wesley.bloblib.utils.BfsUtility;
  *
  */
 public class ParallelUploader {
-	
-	/* the blob reference */
-	private CloudBlob blob;
+	/* instance of the object */
+	private static ParallelUploader instance = null;
 	/* the number of threads */
 	private int defaultNumOfThreads = 8;
 	/* the minimum chunk size */
 	private int minChunkSize = 512 * 1024; // 512K
 	/* the uploader threads pool */
-	private ThreadPuddle uploaderThreadsPool;
+	private static ThreadPuddle uploaderThreadsPool;
 	/* the factory of thread puddle class */
-	private ThreadPuddleFactory threadPuddleFactory;
-	/* final count of chunks */
-	private int numOfChunks;
-	/* completed task's ID so far */
-	private int completedTaskID = -1;
-	/* the start offset of the blob to be uploaded from */
-	private int centralBufferOffset;
-	/* the length of bytes needed to be uploaded, 
-	 * the length should be within a pre-defined range */
-	private long length;
-	/* the tasks list */
-	private List<UploadTask> uploadTasksList = new ArrayList<UploadTask>();
-	/* chunk sequence number */
-	public int chunkNumber;
-
+	private static ThreadPuddleFactory threadPuddleFactory;
 	
 	/**
 	 * the task class of read/write operations
@@ -71,6 +56,27 @@ public class ParallelUploader {
 		
 	}
 	
+	/**
+	 * constructor
+	 */
+	private ParallelUploader(){
+		initTheUploaderThreadsPool(this.defaultNumOfThreads);
+	}
+	
+	/**
+	 * get the singleton instance
+	 * @return
+	 */
+	public synchronized static ParallelUploader getInstance () {
+	    if(instance == null){
+            synchronized (ParallelUploader.class) {
+                if(instance == null){
+                    instance = new ParallelUploader();
+               }
+            }
+        }
+	    return instance;
+	}
 	
 	/**
 	 * initialize the threads pool
@@ -78,33 +84,32 @@ public class ParallelUploader {
 	private final void initTheUploaderThreadsPool(int numOfthreads){
 		threadPuddleFactory = new ThreadPuddleFactory();
 		threadPuddleFactory.setThreads(numOfthreads);
-		threadPuddleFactory.setTaskLimit(numOfthreads);
 		threadPuddleFactory.setFifo(true);
 		uploaderThreadsPool = threadPuddleFactory.build();
 	}
 	
-	public ParallelUploader(CloudBlob blob, int centralBufferOffset, long length, int chunkNumber){
-		this.blob = blob;
-		this.centralBufferOffset = centralBufferOffset;
-		this.length = length;
-		this.chunkNumber = chunkNumber;
-		getFinalNumOfChunks();
-		initTheUploaderThreadsPool(numOfChunks);
-	}
 	
-	private void getFinalNumOfChunks(){
+	/**
+	 * @param length
+	 * @return number of chunks
+	 */
+	private int getFinalNumOfChunks(long length){
 		int tmpBlockCount = (int)((float)length / (float)minChunkSize) + 1;
 		/* the final number of the chunks */
-		numOfChunks = Math.min(defaultNumOfThreads, tmpBlockCount);
-		return;
+		int numOfChunks = Math.min(defaultNumOfThreads, tmpBlockCount);
+		return numOfChunks;
 	}
+
 	
 	/**
 	 * generate the parallel tasks
 	 */
-	private final void splitJobIntoTheParallelTasks(){
+	private final List<UploadTask> splitJobIntoTheParallelTasks(int blobOffset, long length, int chunkNumber){
+		List<UploadTask> uploadTasksList = new ArrayList<UploadTask>();
 		int taskSequenceID = 0;
-		int tmpOffset = this.centralBufferOffset;
+		int tmpOffset = blobOffset;
+		/* get the number of chunks */
+		int numOfChunks = getFinalNumOfChunks(length);
 		/* the final size of the chunk */
 		long numBtsInEachChunk = (long)(float)(length/numOfChunks);
 		long bytesLeft = length;
@@ -116,9 +121,9 @@ public class ParallelUploader {
             } else {
               bytesToWrite = (int)bytesLeft;
             }
-            this.chunkNumber ++;
+            chunkNumber ++;
         	/* save chunk id in array (must be base64) */
-            String chunkId = DatatypeConverter.printBase64Binary(String.format("BlockId%07d", this.chunkNumber).getBytes(StandardCharsets.UTF_8));
+            String chunkId = DatatypeConverter.printBase64Binary(String.format("BlockId%07d", chunkNumber).getBytes(StandardCharsets.UTF_8));
             /* generate a new task , and put it into tasks list */ 
             UploadTask ulTask = new UploadTask(taskSequenceID, chunkId, tmpOffset, bytesToWrite);
             uploadTasksList.add(ulTask);
@@ -130,16 +135,24 @@ public class ParallelUploader {
             /* increment/decrement counters */         
             bytesLeft -= bytesToWrite;
 		}
-		return;
+		return uploadTasksList;
 	}
 	
-	public final int uploadBlobWithParallelThreads(final byte[] dlJobCentralBuffer, final List<BlockEntry> blockList, final AccessCondition accCondtion, final String leaseID) throws Exception{
+	public final int[] uploadBlobWithParallelThreads(final byte[] dlJobCentralBuffer , final CloudBlob blob, final int blobOffset, final long length, final List<BlockEntry> blockList, 
+			final AccessCondition accCondtion, final String leaseID, int chunkNumber) throws Exception{
+		/* completed task's ID so far */
+		final int completedTaskID[] = new int[1];
+		completedTaskID[0] = -1;
+		int tmpchunkNumber = chunkNumber;
 		final int failedTasks[] = new int[1];
-		final int totalBtsuploaded[] = new int[1];
+		/* resutl, 0: totalBtsuploaded, 1: chunkNumber */
+		final int uploadRes[] = new int[2];
 		/* get the upload tasks */
-		splitJobIntoTheParallelTasks();
+		List<UploadTask> uploadTasksList = splitJobIntoTheParallelTasks(blobOffset, length, chunkNumber);
 		/* no tasks, return immediately */
-		if (uploadTasksList.size() == 0){return 0;}
+		if (uploadTasksList.size() == 0){return uploadRes;}
+		/* update the sequence number of the chunks */
+		uploadRes[1] = tmpchunkNumber + uploadTasksList.size() ;
 		/* start the parallel reading */
 		for (final UploadTask uploadTask : uploadTasksList){
 			uploaderThreadsPool.run(new Runnable() 
@@ -160,7 +173,7 @@ public class ParallelUploader {
 							bInput.close();
 							
 							/* wait for the pre-task to be completed */
-							while(completedTaskID != uploadTask.taskID -1){
+							while(completedTaskID[0] != uploadTask.taskID -1){
 								Thread.sleep((Constants.DEFAULT_BFC_THREAD_SLEEP_MILLS/5));										
 							}
 							/* set leaseID in the meta data */
@@ -170,9 +183,9 @@ public class ParallelUploader {
 //							cbParams.setLeaseID(leaseID);
 //							BlobService.setBlobMetadata(cbParams,Constants.BLOB_META_DATA_COMMITED_BLOBKS_KEY, BfsUtility.blockIds(blockList));
 							/* update the total number of bytes uploaded so far */
-							totalBtsuploaded[0] += uploadTask.length;
+							uploadRes[0] += uploadTask.length;
 							/* update the offset of the completed task */
-							completedTaskID = uploadTask.taskID;
+							completedTaskID[0] = uploadTask.taskID;
 							/* success */
 							return;
 
@@ -196,17 +209,16 @@ public class ParallelUploader {
 		while(true){
 			/* if there are any error, we should abandon this read operation */
 			if (failedTasks[0] > 0){
-				uploaderThreadsPool.die();
 				throw new BfsException("write Failed:" + blob.getName());
 			}
 			/* completedTaskID start form 0 */
-			if (uploadTasksList.size() == completedTaskID + 1 && totalBtsuploaded[0] == length){
+			if (uploadTasksList.size() == completedTaskID[0] + 1 && uploadRes[0] == length){
 				break;
 			}
 			Thread.sleep((Constants.DEFAULT_BFC_THREAD_SLEEP_MILLS/5));
 		}
 		/* return the result */
-		return totalBtsuploaded[0];
+		return uploadRes;
 
 	}
 	

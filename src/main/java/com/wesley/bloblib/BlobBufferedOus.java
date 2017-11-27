@@ -50,6 +50,9 @@ public class BlobBufferedOus extends OutputStream {
 
 	/* list of all block ids we will be uploading - need it for the commit at the end */
     List<BlockEntry> blockList;
+    
+    /* get the parallel uploader instance */
+    ParallelUploader parallelUploader = ParallelUploader.getInstance();
 	
 	@SuppressWarnings("static-access")
 	public BlobBufferedOus(BlobReqParams reqParams) throws BfsException, StorageException {
@@ -195,11 +198,10 @@ public class BlobBufferedOus extends OutputStream {
 			/* renew the lease firstly, otherwise the lease may be expired, this will cause error */
 			blob.renewLease(accCondtion);
      		if (BfsBlobType.BLOCKBLOB.equals(this.blobType)){
-				ParallelUploader parallelUploader = new ParallelUploader(blob, offset, length, chunkNumber);
-				parallelUploader.uploadBlobWithParallelThreads(rawData, blockList, accCondtion, leaseID);
+     			int uploadRes[] = parallelUploader.uploadBlobWithParallelThreads(rawData, blob, offset, length, 
+     					blockList, accCondtion, leaseID, chunkNumber);
 				/* update the chunk counter */
-				chunkNumber = parallelUploader.chunkNumber;
-				parallelUploader.destroy();
+				chunkNumber = uploadRes[1];
 			} 
      		else
 			{

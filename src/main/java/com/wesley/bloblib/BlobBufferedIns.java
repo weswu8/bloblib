@@ -31,6 +31,10 @@ public class BlobBufferedIns extends InputStream {
 
 	boolean isBlobEOF = false;
 	
+	/* get the parallel downloader instance */
+	ParallelDownloader parallelDownloader = ParallelDownloader.getInstance();
+	
+	
 	@SuppressWarnings("static-access")
 	public BlobBufferedIns(BlobReqParams reqParams) throws BfsException {
 		this.blob = BlobService.getBlobReference(reqParams);
@@ -216,10 +220,8 @@ public class BlobBufferedIns extends InputStream {
 		len = Math.min(blobSize - offset, len) ;
         dwLocalBuffer = new byte[(int) len];
 		try {
-			ParallelDownloader parallelDownloader = new ParallelDownloader(blob, offset, len);
-			dwLocalBuffer = parallelDownloader.downloadBlobWithParallelThreads();
+			dwLocalBuffer = parallelDownloader.downloadBlobWithParallelThreads(blob, offset, len);
 			bytesDownloaded = dwLocalBuffer.length;
-			parallelDownloader.destroy();
 		} catch (Exception ex) {
 			String errMessage = "Unexpected exception occurred when downloading from the blob : " 
 						+ this.fullBlobPath + ". " + ex.getMessage(); 

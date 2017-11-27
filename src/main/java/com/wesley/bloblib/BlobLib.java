@@ -1,18 +1,6 @@
 package com.wesley.bloblib;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
-
 import org.pmw.tinylog.Logger;
-
-import com.eclipsesource.json.Json;
-import com.eclipsesource.json.JsonObject;
-import com.microsoft.azure.storage.blob.CloudBlob;
-import com.microsoft.azure.storage.file.ShareListingDetails;
 
 public class BlobLib {
 
@@ -48,8 +36,8 @@ public class BlobLib {
 //            BlobBufferedIns bbIns = new BlobBufferedIns(insParams);
 //			BlobReqParams ousParams = new BlobReqParams();
 //            ousParams.setContainer("music2017");
-//            ousParams.setBlob("blobfs-2017-11-21.log");
-//            /* get the blob type */
+//            ousParams.setBlob("blobfs-2017-11-23.log");
+////            /* get the blob type */
 //            ousParams.setBfsBlobType(BfsBlobType.BLOCKBLOB);
 //            BlobService.createBlob(ousParams);
 //            BlobBufferedOus bbOus = new BlobBufferedOus(ousParams);	
@@ -132,7 +120,7 @@ public class BlobLib {
 //            BfsBlobType bfsBlobType = pathPropeties.getBfsBlobType();
 //            BfsPath bfsPath = new BfsPath("newtest");
 //            PathProperties pathProperties = bfsPath.getBfsPathProperties();
-			  BlobReqParams delDirParams = new BlobReqParams();
+//			  BlobReqParams delDirParams = new BlobReqParams();
 //	          delDirParams.setContainer("orders");
 //	          delDirParams.setBlob("wx.txt");
 //	          BlobService.deleteBlob(delDirParams);
@@ -152,7 +140,7 @@ public class BlobLib {
 //               System.out.println("DELETE SUCCESSED!");
 //            }
 			System.out.println("You called the main method!");
-			System.out.println(Configuration.BFS_CACHE_TTL_MS);
+			//System.out.println(Configuration.BFS_CACHE_TTL_MS);
 //			while(true)
 //			{
 //				System.out.println("main thread!");
@@ -164,5 +152,5 @@ public class BlobLib {
 			Logger.error(ex.getMessage());
 		}
 	}
-
+	
 }

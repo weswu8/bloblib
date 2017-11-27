@@ -12,6 +12,8 @@ Packaged the core operations of the azure blob storage as a separated library, t
 
 
 ## Features:
+* New Features since v0.0.4 :
+
 * Support man operations of the container,virtual directory and blob. such as create, delete, list, read, write etc.
 * New extension class of the InputStream and OutputStream. add a new cache layer and is optimized for the blob read and write.
 * Use blob leases as the distributed locking mechanism across multiple nodes. The blob will be locked exclusively when it is written. 
