@@ -36,6 +36,7 @@ public class BlobBufferedOus extends OutputStream {
 	int chunkSizeOfBB = Constants.BLOB_BUFFERED_OUTS_BLOCKBLOB_CHUNK_SIZE * 2;
 	int chunkNumber = 0;
 	int chunkSizeOfAB = Constants.BLOB_BUFFERED_OUTS_APPENDBLOB_CHUNK_SIZE;
+	int chunkSizeOfPB = Constants.BLOB_BUFFERED_OUTS_PAGEBLOB_CHUNK_SIZE;
 	/* the available bytes in central buffer */
 	long blobOffset = 0;
 	/* the path of the blob */
@@ -98,6 +99,7 @@ public class BlobBufferedOus extends OutputStream {
 		/* write data to the buffer */
 		writeToBuffer(data, offset, length);
 		/* check the buffered data and the chunk size threshold */
+		/* make sure the data is 512 Bytes aligned for page blob */
 		if (isBufferedDataReadyToUpload()){
 			int numOfdataUploaded = 0;
 			if ((numOfdataUploaded = uploadBlobChunk(centralBuffer, 0, centralBufOffset)) > 0){
@@ -121,6 +123,12 @@ public class BlobBufferedOus extends OutputStream {
 		try {
 			if (centralBufOffset > 0) {
 				int numOfdataUploaded = 0;
+				/* for page blob, we should make sure the length is 512 Bytes aligned */
+				if (BfsBlobType.PAGEBLOB.equals(this.blobType)) {
+					/* make sure the data is 512 Bytes aligned for page blob */
+					this.centralBufOffset = (int) BfsUtility.extendTo512BytesAlignedLength(centralBufOffset);
+					this.centralBuffer = BfsUtility.extendTo512BytesAlignedData(this.centralBuffer);
+				}
 				if ((numOfdataUploaded = uploadBlobChunk(centralBuffer, 0, centralBufOffset)) > 0) {
 					totalDataUploaded += numOfdataUploaded;
 					/* reset the chunk count */
@@ -198,6 +206,7 @@ public class BlobBufferedOus extends OutputStream {
 			/* renew the lease firstly, otherwise the lease may be expired, this will cause error */
 			blob.renewLease(accCondtion);
      		if (BfsBlobType.BLOCKBLOB.equals(this.blobType)){
+     			/* is the block blob */
      			int uploadRes[] = parallelUploader.uploadBlobWithParallelThreads(rawData, blob, offset, length, 
      					blockList, accCondtion, leaseID, chunkNumber);
 				/* update the chunk counter */
@@ -205,10 +214,12 @@ public class BlobBufferedOus extends OutputStream {
 			} 
      		else
 			{
-				ByteArrayInputStream bInput = new ByteArrayInputStream(rawData, offset, length);
+				/* is the append blob or page blob */
+     			ByteArrayInputStream bInput = new ByteArrayInputStream(rawData, offset, length);
 				if (BfsBlobType.APPENDBLOB.equals(this.blobType)){
 					((CloudAppendBlob) blob).appendBlock(bInput, (long)length, accCondtion, null, null);
 				}else if (BfsBlobType.PAGEBLOB.equals(this.blobType)){
+					/* for page blob, we already make sure the length is 512B aligned */
 					((CloudPageBlob) blob).upload(bInput, length, accCondtion, null, null);
 				}
 				bInput.close();
@@ -223,12 +234,19 @@ public class BlobBufferedOus extends OutputStream {
 		return dataUploadedThisChunk;
 	}
 	
+	/** make sure the length is valid
+	 * @return
+	 */
 	public synchronized boolean isBufferedDataReadyToUpload() {
 		boolean result = false;
 		if (BfsBlobType.BLOCKBLOB.equals(this.blobType)){
-			if (centralBufOffset > chunkSizeOfBB){ return result = true;}
+			if (centralBufOffset > chunkSizeOfBB){ result = true;}
 		} else if (BfsBlobType.APPENDBLOB.equals(this.blobType)){
-			if (centralBufOffset > chunkSizeOfAB){ return result = true;}
+			if (centralBufOffset > chunkSizeOfAB){ result = true;}
+		} else if(BfsBlobType.PAGEBLOB.equals(this.blobType)){
+			if (centralBufOffset > chunkSizeOfPB && BfsUtility.is512BytesAligned(centralBufOffset)){
+				result = true;
+			}
 		}
 		/* page blob */
 		return result;
@@ -259,14 +277,16 @@ public class BlobBufferedOus extends OutputStream {
 				String errMessage = "The size of the source file exceeds the size limit: " + blobSizeLimit + "."; 
 				throw new BfsException(errMessage);
 			}
-			
-			if (numOfCommitedBlocks + chunkNumber > Constants.BLOB_BLOCK_NUMBER_LIMIT - 1){ //50000
-				String errMessage = "The block count of target blob: " + fullBlobPath + " exceeds the " + Constants.BLOB_BLOCK_NUMBER_LIMIT + " count limit.";
-				throw new BfsException(errMessage);
+			/* for block blob and append blob */
+			if (BfsBlobType.BLOCKBLOB.equals(this.blobType) || (BfsBlobType.APPENDBLOB.equals(this.blobType))){
+				if (numOfCommitedBlocks + chunkNumber > Constants.BLOB_BLOCK_NUMBER_LIMIT - 1){ //50000
+					String errMessage = "The block count of target blob: " + fullBlobPath + " exceeds the " + Constants.BLOB_BLOCK_NUMBER_LIMIT + " count limit.";
+					throw new BfsException(errMessage);
+				}
 			}
 		} catch (Exception ex) {
 			String errMessage = "Unexpected exception occurred when verifing the upload conditons for to the blob : " 
-					+ this.fullBlobPath + "." + ex.getMessage(); 
+					+ this.fullBlobPath + ". " + ex.getMessage(); 
 			BfsUtility.throwBlobfsException(ex, errMessage);
 
 		}

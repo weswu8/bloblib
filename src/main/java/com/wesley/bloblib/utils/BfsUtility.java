@@ -15,6 +15,7 @@ import java.util.TimeZone;
 
 import org.pmw.tinylog.Logger;
 
+import com.fasterxml.jackson.core.json.ByteSourceJsonBootstrapper;
 import com.microsoft.azure.storage.blob.BlockEntry;
 import com.wesley.bloblib.Constants;
 import com.wesley.bloblib.BfsException;
@@ -109,6 +110,10 @@ public final class BfsUtility {
         return process.exitValue();
     }
     
+    /**
+     * @param process
+     * @return
+     */
     public static boolean isRunning(Process process) {
         try {
             process.exitValue();
@@ -133,6 +138,10 @@ public final class BfsUtility {
 		return uid;		
 	}
 	
+	/**
+	 * @param path
+	 * @return
+	 */
 	public static String removeLastSlash (String path){
 		String tmpPath = "";
 		if (path.endsWith("/")) {
@@ -143,12 +152,21 @@ public final class BfsUtility {
 		return tmpPath;
 	}
 	
+	/**
+	 * @param date
+	 * @param timeZone
+	 * @return
+	 */
 	public static String changeDateTimeZone(Date date , String timeZone){
 		DateFormat dateFormat = new SimpleDateFormat("EEE MMM dd HH:mm:ss zzz yyyy", Locale.US);
 		dateFormat.setTimeZone(TimeZone.getTimeZone(timeZone));
 		return dateFormat.format(date);
 	}
 	
+	/**
+	 * @param fileOrDirPath
+	 * @return
+	 */
 	public static String getParentDirPath(String fileOrDirPath) {
 	    boolean endsWithSlash = fileOrDirPath.endsWith(File.separator);
 	    return fileOrDirPath.substring(0, fileOrDirPath.lastIndexOf(File.separatorChar, 
@@ -156,11 +174,19 @@ public final class BfsUtility {
 	}
 
 
+	/**
+	 * @param date
+	 * @return
+	 */
 	public static String convertDateToString(Date date){
 		DateFormat dateFormat = new SimpleDateFormat("EEE MMM dd HH:mm:ss zzz yyyy", Locale.US);
 		return dateFormat.format(date);
 	}
 	
+	/**
+	 * @param dateString
+	 * @return
+	 */
 	public static Date convertStringToDate(String dateString){
 		DateFormat dateFormat = new SimpleDateFormat("EEE MMM dd HH:mm:ss zzz yyyy", Locale.US);
 		Date date = null;
@@ -173,8 +199,63 @@ public final class BfsUtility {
 		return date;
 	}
 	
+	/**
+	 * @return
+	 */
 	public static boolean isWindows() {		
         return (OS.indexOf("win") >= 0);
     }
+	
+	/**
+	 * @param length
+	 * @return
+	 */
+	public static boolean is512BytesAligned(long length){
+	    if (length % 512 == 0){return true;}
+	    return false;
+	}
+
+	/**
+	 * get the 512 bytes aligned length
+	 * @param length
+	 * @return
+	 */
+	public static long shrinkTo512BytesAlignedLength(long length){
+		long tmpLen = 0;
+	    if (length % 512 == 0){tmpLen = length; }
+	    else{
+	    	if (length < 512){tmpLen = 0; }
+	    	else{
+	    		tmpLen = (length - length % 512);
+	    	}
+	    }
+	    return tmpLen;
+	}
+	
+	public static long extendTo512BytesAlignedLength(long length){
+		long tmpLen = 0;
+	    if (length % 512 == 0){ tmpLen = length; }
+	    else{
+	    	tmpLen = length + (512 - length % 512);
+	    }
+	    return tmpLen;
+	}
+	
+	/**
+	 * make data 512 bytes aligned by padding the rest slots with zero;
+	 * @param origData
+	 * @return
+	 */
+	public static byte[]  extendTo512BytesAlignedData(byte[] origData){
+		long length = origData.length;
+	    if (length % 512 == 0){ return  origData; }
+	    else{
+	    	long tmpLen = length + (512 - length % 512);
+	    	byte[] tgtData = new byte [(int) tmpLen]; // all bytes are initialized with 0's
+	    	System.arraycopy(origData, 0, tgtData, 0, (int) length);
+	    	return tgtData;
+	    }
+	}
+	
 	
 }

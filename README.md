@@ -11,8 +11,13 @@ BlobLib is the core libraries of the blobfs and blobfs-win, blobfs is a distribu
 Packaged the core operations of the azure blob storage as a separated library, this will make it easier for supporting different OS platform. This library can also be used alone with various projects.
 
 
-## Features:
-* New Features since v0.0.4 :
+## Features and Updates:
+### New features since v0.0.4 :
+
+* upload and down with multiple threads, more faster and stable.
+* Page blob is full supported.
+
+### New features since v0.0.3 :
 
 * Support man operations of the container,virtual directory and blob. such as create, delete, list, read, write etc.
 * New extension class of the InputStream and OutputStream. add a new cache layer and is optimized for the blob read and write.

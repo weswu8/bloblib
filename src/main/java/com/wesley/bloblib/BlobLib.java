@@ -7,6 +7,8 @@ public class BlobLib {
 	@SuppressWarnings("static-access")
 	public static void main(String[] args) {
 		try {
+//			long len = get512BytesAlignedLength(23435543L);
+//			System.out.println(len);
 			//BfsPath bfsPath = new BfsPath("/index.html");
 			//PathProperties pathProperties = bfsPath.getBfsPathProperties();
 //			MsgsToBeSentCache.getInstance().startAutoSendService();
@@ -36,9 +38,9 @@ public class BlobLib {
 //            BlobBufferedIns bbIns = new BlobBufferedIns(insParams);
 //			BlobReqParams ousParams = new BlobReqParams();
 //            ousParams.setContainer("music2017");
-//            ousParams.setBlob("blobfs-2017-11-23.log");
+//            ousParams.setBlob("blobfs-2017-10-21.vhd");
 ////            /* get the blob type */
-//            ousParams.setBfsBlobType(BfsBlobType.BLOCKBLOB);
+//            ousParams.setBfsBlobType(BfsBlobType.PAGEBLOB);
 //            BlobService.createBlob(ousParams);
 //            BlobBufferedOus bbOus = new BlobBufferedOus(ousParams);	
 //			FileReader fileRead = new FileReader("C:\\Downloads\\Mydevs\\blobfs-win\\blobfs-win\\bin\\Debug\\blobfs-2017-11-19.log");

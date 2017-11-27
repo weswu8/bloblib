@@ -20,6 +20,7 @@ public final class Constants {
 	public static final int 	BLOB_BUFFERED_OUTS_BUFFER_SIZE = 4 * 1024 * 1024; //default is 4MB:  4 * 1024 * 1024 = 4194304
 	public static final int 	BLOB_BUFFERED_OUTS_BLOCKBLOB_CHUNK_SIZE = 4 * 1024 * 1024; //default is 4MB:  4 * 1024 * 1024 = 4194304
 	public static final int 	BLOB_BUFFERED_OUTS_APPENDBLOB_CHUNK_SIZE = 4 * 1024 * 1024; //default is 4MB:  4 * 1024 * 1024 = 4194304
+	public static final int 	BLOB_BUFFERED_OUTS_PAGEBLOB_CHUNK_SIZE = 4 * 1024 * 1024; //default is 4MB:  4 * 1024 * 1024 = 4194304
 
 	public static final int 	BFS_FILES_CACHE_INIT_CAPACITY = 1024; //1024
 	public static final int 	BFS_FILES_CACHE_MAX_CAPACITY = 65535; //opened file

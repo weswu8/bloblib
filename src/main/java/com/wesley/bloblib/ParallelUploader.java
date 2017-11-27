@@ -121,6 +121,7 @@ public class ParallelUploader {
             } else {
               bytesToWrite = (int)bytesLeft;
             }
+            
             chunkNumber ++;
         	/* save chunk id in array (must be base64) */
             String chunkId = DatatypeConverter.printBase64Binary(String.format("BlockId%07d", chunkNumber).getBytes(StandardCharsets.UTF_8));
