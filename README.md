@@ -12,10 +12,16 @@ Packaged the core operations of the azure blob storage as a separated library, t
 
 
 ## Features and Updates:
+
+### Bump the version to v1.0.0
+
+* Optimize performance for large content uploads and downloads
+* Optimize performance for multiple files concurrently download/upload
+
 ### New features since v0.0.4 :
 
 * upload and down with multiple threads, more faster and stable.
-* Page blob is full supported.
+* Page blob is fully supported.
 
 ### New features since v0.0.3 :
 

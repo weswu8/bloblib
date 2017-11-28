@@ -19,9 +19,11 @@ public class ParallelDownloader {
 	/* instance of the object */
 	private static ParallelDownloader instance = null;
 	/* the number of threads */
-	private int defaultNumOfThreads = 8;
+	private int defaultNumOfThreads = 12;
+	/* the number of chunks */
+	private int defaultNumOfChunks = 4;
 	/* the minimum chunk size */
-	private int minChunkSize = 512 * 1024; // 512K
+	private int minChunkSize = 2 * 1024 * 1024; // 2MB
 	/* the downloader threads pool */
 	private static ThreadPuddle downloaderThreadsPool;
 	/* the factory of thread puddle class */
@@ -72,6 +74,7 @@ public class ParallelDownloader {
 	private final void initTheDownLoaderThreadsPool(int numOfthreads){
 		threadPuddleFactory = new ThreadPuddleFactory();
 		threadPuddleFactory.setThreads(numOfthreads);
+		threadPuddleFactory.setTaskLimit(numOfthreads * 100);
 		threadPuddleFactory.setFifo(true);
 		downloaderThreadsPool = threadPuddleFactory.build();
 	}
@@ -80,7 +83,7 @@ public class ParallelDownloader {
 	private int getFinalNumOfChunks(long length){
 		int tmpBlockCount = (int)((float)length / (float)minChunkSize) + 1;
 		/* the final number of the chunks */
-		int numOfChunks = Math.min(defaultNumOfThreads, tmpBlockCount);
+		int numOfChunks = Math.min(defaultNumOfChunks, tmpBlockCount);
 		return numOfChunks;
 	}
 	

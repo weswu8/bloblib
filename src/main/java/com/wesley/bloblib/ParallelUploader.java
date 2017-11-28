@@ -29,9 +29,11 @@ public class ParallelUploader {
 	/* instance of the object */
 	private static ParallelUploader instance = null;
 	/* the number of threads */
-	private int defaultNumOfThreads = 8;
+	private int defaultNumOfThreads = 12;
+	/* the number of chunks */
+	private int defaultNumOfChunks = 4;
 	/* the minimum chunk size */
-	private int minChunkSize = 512 * 1024; // 512K
+	private int minChunkSize = 2 * 1024 * 1024; // 2MB
 	/* the uploader threads pool */
 	private static ThreadPuddle uploaderThreadsPool;
 	/* the factory of thread puddle class */
@@ -84,6 +86,7 @@ public class ParallelUploader {
 	private final void initTheUploaderThreadsPool(int numOfthreads){
 		threadPuddleFactory = new ThreadPuddleFactory();
 		threadPuddleFactory.setThreads(numOfthreads);
+		threadPuddleFactory.setTaskLimit(numOfthreads * 100);
 		threadPuddleFactory.setFifo(true);
 		uploaderThreadsPool = threadPuddleFactory.build();
 	}
@@ -96,7 +99,7 @@ public class ParallelUploader {
 	private int getFinalNumOfChunks(long length){
 		int tmpBlockCount = (int)((float)length / (float)minChunkSize) + 1;
 		/* the final number of the chunks */
-		int numOfChunks = Math.min(defaultNumOfThreads, tmpBlockCount);
+		int numOfChunks = Math.min(defaultNumOfChunks, tmpBlockCount);
 		return numOfChunks;
 	}
 

@@ -4,7 +4,7 @@
   <groupId>com.wesley</groupId>
   <artifactId>bloblib</artifactId>
   <name>A blob operation library built on top of azure blob service</name>
-  <version>0.0.3</version>
+  <version>1.0.0</version>
   <url>http://maven.apache.org</url>
   <build>
     <sourceDirectory>src</sourceDirectory>
