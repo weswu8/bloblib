@@ -137,9 +137,9 @@ public class CachedFilesInMemManager extends BfsCacheBase {
 		@SuppressWarnings("static-access")
 		@Override
 		public void run() {
-			try {				
+			while (true){				
 				/* start the auto cleanup process */
-				while (true){
+				try {
 					//CachedFilesInMemManager bfsFilesCache = CachedFilesInMemManager.getInstance();
 					/* Retrieve the msgs from the service bus topic */
 					ArrayList<String> msgs = new ArrayList<>();
@@ -154,10 +154,12 @@ public class CachedFilesInMemManager extends BfsCacheBase {
     					msg = MessageService.getInstance().buildProcessedMsgToBeSent(msg);
     					MessageService.getInstance().sendMessage(msg);
 					}					
-					Thread.sleep(Constants.DEFAULT_BFC_THREAD_SLEEP_MILLS);
-				}			
-			} catch (Exception ex) {
-				Logger.error(ex.getMessage());
+					
+				} catch (Exception ex) {
+					Logger.error(ex.getMessage());
+				}
+				try { Thread.sleep(Constants.DEFAULT_BFC_THREAD_SLEEP_MILLS);
+				} catch (InterruptedException e) {}
 			}
 		}
 	
